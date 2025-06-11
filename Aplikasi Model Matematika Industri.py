@@ -1,5 +1,5 @@
 # Aplikasi Model Matematika Industri
-# app.py
+app.py
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
