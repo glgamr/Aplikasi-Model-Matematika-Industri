@@ -1,116 +1,117 @@
 import streamlit as st
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy.optimize import linprog
+from math import sqrt
+import matplotlib.pyplot as plt
 
-st.set_page_config(page_title="Aplikasi Model Matematika Industri", layout="wide")
+st.set_page_config(page_title="Aplikasi Model Matematika Industri", layout="centered")
 
-with st.sidebar:
-    st.title("📘 Petunjuk Aplikasi")
-    st.write("Aplikasi ini terdiri dari 4 model matematika industri:")
-    st.markdown("""
-    1. **Optimasi Produksi (Linear Programming)**
-    2. **Model Persediaan (EOQ)**
-    3. **Model Antrian (M/M/1)**
-    4. **Prediksi Permintaan (Regresi Linier)**
-    
-    Masukkan parameter pada tiap tab dan lihat hasil visualisasi serta outputnya.
-    """)
+st.title("📊 Aplikasi Model Matematika Industri")
 
-tabs = st.tabs(["Optimasi Produksi", "Model EOQ", "Model Antrian", "Prediksi Permintaan"])
+menu = st.sidebar.selectbox("Pilih Model", [
+    "1. Linear Programming – Optimasi Produksi",
+    "2. EOQ – Economic Order Quantity",
+    "3. Antrian M/M/1 – Layanan Pelanggan",
+    "4. Regresi Linier – Prediksi Permintaan"
+])
 
-# Tab 1: Linear Programming
-with tabs[0]:
-    st.header("Optimasi Produksi (Linear Programming)")
-    st.write("Gunakan Linear Programming untuk memaksimalkan keuntungan.")
+# ---------------------------------------------
+# 1. Linear Programming
+# ---------------------------------------------
+if "Linear Programming" in menu:
+    st.header("1. Linear Programming – Optimasi Produksi")
 
-    c1 = st.number_input("Keuntungan produk A", value=5)
-    c2 = st.number_input("Keuntungan produk B", value=4)
+    # Fungsi tujuan: Maksimalkan Z = 50.000x + 40.000y
+    c = [-50000, -40000]  # dikali -1 karena linprog meminimalkan
 
-    A = [[2, 3], [4, 1]]  # Koefisien kendala
-    b = [100, 80]  # Batasan sumber daya
-    c = [-c1, -c2]  # Negatif karena linprog melakukan minimisasi
-
+    # Kendala:
+    A = [
+        [2, 3],   # 2x + 3y <= 100 (jam kerja tukang kayu)
+        [4, 1]    # 4x +  y <= 80 (papan kayu)
+    ]
+    b = [100, 80]
     bounds = [(0, None), (0, None)]
+
     res = linprog(c, A_ub=A, b_ub=b, bounds=bounds, method='highs')
 
     if res.success:
-        st.success("Solusi ditemukan!")
-        st.write(f"Produksi Produk A: {res.x[0]:.2f} unit")
-        st.write(f"Produksi Produk B: {res.x[1]:.2f} unit")
-
-        fig, ax = plt.subplots()
-        ax.bar(['Produk A', 'Produk B'], res.x, color=['blue', 'orange'])
-        ax.set_ylabel('Jumlah Produksi')
-        st.pyplot(fig)
+        x, y = res.x
+        st.success("Solusi ditemukan:")
+        st.write(f"Jumlah Meja (x): {x:.2f}")
+        st.write(f"Jumlah Kursi (y): {y:.2f}")
+        st.write(f"Maksimum Keuntungan: Rp {abs(res.fun):,.0f}")
     else:
         st.error("Solusi tidak ditemukan.")
 
-# Tab 2: EOQ
-with tabs[1]:
-    st.header("Model Persediaan (EOQ)")
-    D = st.number_input("Permintaan Tahunan (D)", value=1000)
-    S = st.number_input("Biaya Pemesanan per Order (S)", value=50)
-    H = st.number_input("Biaya Penyimpanan per Unit per Tahun (H)", value=2)
+# ---------------------------------------------
+# 2. EOQ
+# ---------------------------------------------
+elif "EOQ" in menu:
+    st.header("2. EOQ – Economic Order Quantity")
 
-    if H > 0:
-        eoq = np.sqrt((2 * D * S) / H)
-        st.success(f"EOQ (Jumlah Pemesanan Ekonomis): {eoq:.2f} unit")
+    D = 1000    # permintaan tahunan
+    S = 50000   # biaya pemesanan
+    H = 2000    # biaya penyimpanan per unit
 
-        fig, ax = plt.subplots()
-        q = np.linspace(1, 2*eoq, 100)
-        tc = (D/q)*S + (q/2)*H
-        ax.plot(q, tc)
-        ax.set_xlabel('Jumlah Pemesanan (Q)')
-        ax.set_ylabel('Total Biaya')
-        ax.set_title('Kurva Total Biaya vs EOQ')
-        st.pyplot(fig)
+    eoq = sqrt((2 * D * S) / H)
 
-# Tab 3: M/M/1 Queue
-with tabs[2]:
-    st.header("Model Antrian (M/M/1)")
-    lambd = st.number_input("Rata-rata Kedatangan (λ)", value=2.0)
-    mu = st.number_input("Rata-rata Pelayanan (μ)", value=4.0)
+    st.write(f"Permintaan tahunan (D): {D}")
+    st.write(f"Biaya pemesanan per order (S): Rp {S:,}")
+    st.write(f"Biaya penyimpanan per unit per tahun (H): Rp {H:,}")
+    st.success(f"Jumlah Pemesanan Ekonomis (EOQ): {eoq:.2f} unit")
 
-    if mu > lambd:
-        rho = lambd / mu
-        L = rho / (1 - rho)
-        W = 1 / (mu - lambd)
-        st.success(f"Utilisasi: {rho:.2f}")
-        st.write(f"Jumlah rata-rata dalam sistem (L): {L:.2f}")
-        st.write(f"Waktu rata-rata dalam sistem (W): {W:.2f} jam")
+# ---------------------------------------------
+# 3. Antrian M/M/1
+# ---------------------------------------------
+elif "Antrian" in menu:
+    st.header("3. Antrian M/M/1 – Sistem Layanan Pelanggan")
 
-        fig, ax = plt.subplots()
-        ax.bar(['Utilisasi', 'L', 'W'], [rho, L, W], color='green')
-        st.pyplot(fig)
+    λ = 2  # pelanggan per jam
+    μ = 4  # layanan per jam
+
+    if λ >= μ:
+        st.error("Sistem tidak stabil (λ harus < μ).")
     else:
-        st.error("μ harus lebih besar dari λ agar sistem stabil.")
+        ρ = λ / μ
+        L = λ / (μ - λ)
+        W = 1 / (μ - λ)
 
-# Tab 4: Regresi Linier
-with tabs[3]:
-    st.header("Prediksi Permintaan (Regresi Linier)")
-    st.write("Masukkan data bulan dan permintaan.")
-    months = st.text_input("Bulan (pisahkan dengan koma)", "1,2,3,4,5")
-    demand = st.text_input("Permintaan (pisahkan dengan koma)", "100,120,130,150,170")
+        st.write(f"Tingkat Kedatangan (λ): {λ} pelanggan/jam")
+        st.write(f"Tingkat Pelayanan (μ): {μ} pelanggan/jam")
+        st.success(f"Utilisasi Teknisi (ρ): {ρ:.2f} atau {ρ*100:.0f}%")
+        st.success(f"Rata-rata pelanggan dalam sistem (L): {L:.2f} orang")
+        st.success(f"Rata-rata waktu dalam sistem (W): {W*60:.2f} menit")
 
-    try:
-        x = np.array([int(i) for i in months.split(',')])
-        y = np.array([int(i) for i in demand.split(',')])
+# ---------------------------------------------
+# 4. Regresi Linier
+# ---------------------------------------------
+elif "Regresi" in menu:
+    st.header("4. Regresi Linier – Prediksi Permintaan Bulanan")
 
-        if len(x) == len(y) and len(x) >= 2:
-            coef = np.polyfit(x, y, 1)
-            trend = np.poly1d(coef)
+    bulan = np.array([1, 2, 3, 4, 5])
+    permintaan = np.array([100, 120, 130, 150, 170])
 
-            st.success(f"Model: permintaan = {coef[0]:.2f} * bulan + {coef[1]:.2f}")
+    n = len(bulan)
+    sum_x = bulan.sum()
+    sum_y = permintaan.sum()
+    sum_xy = (bulan * permintaan).sum()
+    sum_x2 = (bulan ** 2).sum()
 
-            fig, ax = plt.subplots()
-            ax.scatter(x, y, color='blue', label='Data')
-            ax.plot(x, trend(x), color='red', label='Regresi')
-            ax.set_xlabel('Bulan')
-            ax.set_ylabel('Permintaan')
-            ax.legend()
-            st.pyplot(fig)
-        else:
-            st.warning("Data bulan dan permintaan harus sama panjang dan minimal 2 data.")
-    except:
-        st.error("Format input tidak valid. Gunakan angka dan koma.")
+    b = (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x ** 2)
+    a = (sum_y - b * sum_x) / n
+
+    def predict(x): return a + b * x
+    bulan_ke6 = predict(6)
+
+    st.write(f"Persamaan regresi: Y = {a:.2f} + {b:.2f}X")
+    st.success(f"Prediksi permintaan bulan ke-6: {bulan_ke6:.2f} unit")
+
+    # Plot grafik
+    plt.figure()
+    plt.scatter(bulan, permintaan, color='blue', label='Data Aktual')
+    plt.plot(bulan, predict(bulan), color='red', label='Regresi Linier')
+    plt.xlabel("Bulan")
+    plt.ylabel("Permintaan")
+    plt.title("Prediksi Permintaan dengan Regresi Linier")
+    plt.legend()
+    st.pyplot(plt)
