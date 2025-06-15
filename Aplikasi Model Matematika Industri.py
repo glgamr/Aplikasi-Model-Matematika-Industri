@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 st.set_page_config(page_title="Aplikasi Model Matematika Industri", layout="centered")
 
 st.title("📊 Aplikasi Model Matematika Industri")
-
 menu = st.sidebar.selectbox("Pilih Model", [
     "1. Linear Programming – Optimasi Produksi",
     "2. EOQ – Economic Order Quantity",
@@ -21,27 +20,33 @@ menu = st.sidebar.selectbox("Pilih Model", [
 if "Linear Programming" in menu:
     st.header("1. Linear Programming – Optimasi Produksi")
 
-    # Fungsi tujuan: Maksimalkan Z = 50.000x + 40.000y
-    c = [-50000, -40000]  # dikali -1 karena linprog meminimalkan
+    st.subheader("Masukkan parameter:")
+    profit_A = st.number_input("Keuntungan per unit Produk A (Meja)", value=50000)
+    profit_B = st.number_input("Keuntungan per unit Produk B (Kursi)", value=40000)
 
-    # Kendala:
-    A = [
-        [2, 3],   # 2x + 3y <= 100 (jam kerja tukang kayu)
-        [4, 1]    # 4x +  y <= 80 (papan kayu)
-    ]
-    b = [100, 80]
-    bounds = [(0, None), (0, None)]
+    jam_A = st.number_input("Jam tukang untuk Produk A", value=2.0)
+    jam_B = st.number_input("Jam tukang untuk Produk B", value=3.0)
+    papan_A = st.number_input("Papan kayu untuk Produk A", value=4.0)
+    papan_B = st.number_input("Papan kayu untuk Produk B", value=1.0)
 
-    res = linprog(c, A_ub=A, b_ub=b, bounds=bounds, method='highs')
+    max_jam = st.number_input("Total jam kerja tersedia", value=100.0)
+    max_papan = st.number_input("Total papan kayu tersedia", value=80.0)
 
-    if res.success:
-        x, y = res.x
-        st.success("Solusi ditemukan:")
-        st.write(f"Jumlah Meja (x): {x:.2f}")
-        st.write(f"Jumlah Kursi (y): {y:.2f}")
-        st.write(f"Maksimum Keuntungan: Rp {abs(res.fun):,.0f}")
-    else:
-        st.error("Solusi tidak ditemukan.")
+    if st.button("Hitung Optimasi Produksi"):
+        c = [-profit_A, -profit_B]
+        A = [[jam_A, jam_B], [papan_A, papan_B]]
+        b = [max_jam, max_papan]
+        bounds = [(0, None), (0, None)]
+
+        res = linprog(c, A_ub=A, b_ub=b, bounds=bounds, method='highs')
+        if res.success:
+            x, y = res.x
+            st.success("Solusi ditemukan:")
+            st.write(f"Jumlah Produk A (Meja): {x:.2f}")
+            st.write(f"Jumlah Produk B (Kursi): {y:.2f}")
+            st.write(f"Maksimum Keuntungan: Rp {abs(res.fun):,.0f}")
+        else:
+            st.error("Solusi tidak ditemukan.")
 
 # ---------------------------------------------
 # 2. EOQ
@@ -49,16 +54,13 @@ if "Linear Programming" in menu:
 elif "EOQ" in menu:
     st.header("2. EOQ – Economic Order Quantity")
 
-    D = 1000    # permintaan tahunan
-    S = 50000   # biaya pemesanan
-    H = 2000    # biaya penyimpanan per unit
+    D = st.number_input("Permintaan Tahunan (unit)", value=1000)
+    S = st.number_input("Biaya Pemesanan per Order (Rp)", value=50000)
+    H = st.number_input("Biaya Penyimpanan per Unit per Tahun (Rp)", value=2000)
 
-    eoq = sqrt((2 * D * S) / H)
-
-    st.write(f"Permintaan tahunan (D): {D}")
-    st.write(f"Biaya pemesanan per order (S): Rp {S:,}")
-    st.write(f"Biaya penyimpanan per unit per tahun (H): Rp {H:,}")
-    st.success(f"Jumlah Pemesanan Ekonomis (EOQ): {eoq:.2f} unit")
+    if st.button("Hitung EOQ"):
+        eoq = sqrt((2 * D * S) / H)
+        st.success(f"Jumlah Pemesanan Ekonomis (EOQ): {eoq:.2f} unit")
 
 # ---------------------------------------------
 # 3. Antrian M/M/1
@@ -66,21 +68,19 @@ elif "EOQ" in menu:
 elif "Antrian" in menu:
     st.header("3. Antrian M/M/1 – Sistem Layanan Pelanggan")
 
-    λ = 2  # pelanggan per jam
-    μ = 4  # layanan per jam
+    λ = st.number_input("Tingkat Kedatangan (λ) pelanggan/jam", value=2.0)
+    μ = st.number_input("Tingkat Pelayanan (μ) pelanggan/jam", value=4.0)
 
-    if λ >= μ:
-        st.error("Sistem tidak stabil (λ harus < μ).")
-    else:
-        ρ = λ / μ
-        L = λ / (μ - λ)
-        W = 1 / (μ - λ)
-
-        st.write(f"Tingkat Kedatangan (λ): {λ} pelanggan/jam")
-        st.write(f"Tingkat Pelayanan (μ): {μ} pelanggan/jam")
-        st.success(f"Utilisasi Teknisi (ρ): {ρ:.2f} atau {ρ*100:.0f}%")
-        st.success(f"Rata-rata pelanggan dalam sistem (L): {L:.2f} orang")
-        st.success(f"Rata-rata waktu dalam sistem (W): {W*60:.2f} menit")
+    if st.button("Hitung Antrian"):
+        if λ >= μ:
+            st.error("Sistem tidak stabil. λ harus lebih kecil dari μ.")
+        else:
+            ρ = λ / μ
+            L = λ / (μ - λ)
+            W = 1 / (μ - λ)
+            st.success(f"Utilisasi Teknisi: {ρ*100:.2f}%")
+            st.write(f"Rata-rata pelanggan dalam sistem (L): {L:.2f}")
+            st.write(f"Waktu rata-rata pelanggan dalam sistem (W): {W*60:.2f} menit")
 
 # ---------------------------------------------
 # 4. Regresi Linier
@@ -88,30 +88,47 @@ elif "Antrian" in menu:
 elif "Regresi" in menu:
     st.header("4. Regresi Linier – Prediksi Permintaan Bulanan")
 
-    bulan = np.array([1, 2, 3, 4, 5])
-    permintaan = np.array([100, 120, 130, 150, 170])
+    st.write("Masukkan data bulan dan permintaan:")
+    jumlah_data = st.number_input("Jumlah Bulan", min_value=2, max_value=12, value=5)
 
-    n = len(bulan)
-    sum_x = bulan.sum()
-    sum_y = permintaan.sum()
-    sum_xy = (bulan * permintaan).sum()
-    sum_x2 = (bulan ** 2).sum()
+    bulan = []
+    permintaan = []
 
-    b = (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x ** 2)
-    a = (sum_y - b * sum_x) / n
+    for i in range(int(jumlah_data)):
+        col1, col2 = st.columns(2)
+        with col1:
+            x = st.number_input(f"Bulan ke-{i+1}", value=i+1, key=f"x_{i}")
+        with col2:
+            y = st.number_input(f"Permintaan bulan ke-{i+1}", value=100 + i*20, key=f"y_{i}")
+        bulan.append(x)
+        permintaan.append(y)
 
-    def predict(x): return a + b * x
-    bulan_ke6 = predict(6)
+    bulan = np.array(bulan)
+    permintaan = np.array(permintaan)
 
-    st.write(f"Persamaan regresi: Y = {a:.2f} + {b:.2f}X")
-    st.success(f"Prediksi permintaan bulan ke-6: {bulan_ke6:.2f} unit")
+    if st.button("Hitung Regresi dan Prediksi"):
+        n = len(bulan)
+        sum_x = bulan.sum()
+        sum_y = permintaan.sum()
+        sum_xy = (bulan * permintaan).sum()
+        sum_x2 = (bulan ** 2).sum()
 
-    # Plot grafik
-    plt.figure()
-    plt.scatter(bulan, permintaan, color='blue', label='Data Aktual')
-    plt.plot(bulan, predict(bulan), color='red', label='Regresi Linier')
-    plt.xlabel("Bulan")
-    plt.ylabel("Permintaan")
-    plt.title("Prediksi Permintaan dengan Regresi Linier")
-    plt.legend()
-    st.pyplot(plt)
+        b = (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x ** 2)
+        a = (sum_y - b * sum_x) / n
+
+        def predict(x): return a + b * x
+        bulan_next = int(max(bulan) + 1)
+        prediksi = predict(bulan_next)
+
+        st.write(f"Persamaan regresi: Y = {a:.2f} + {b:.2f}X")
+        st.success(f"Prediksi permintaan bulan ke-{bulan_next}: {prediksi:.2f} unit")
+
+        # Grafik
+        plt.figure()
+        plt.scatter(bulan, permintaan, color='blue', label='Data Aktual')
+        plt.plot(bulan, predict(bulan), color='red', label='Regresi Linier')
+        plt.xlabel("Bulan")
+        plt.ylabel("Permintaan")
+        plt.title("Prediksi Permintaan")
+        plt.legend()
+        st.pyplot(plt)
