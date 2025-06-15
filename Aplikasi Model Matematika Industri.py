@@ -4,7 +4,7 @@ from scipy.optimize import linprog
 from math import sqrt
 import matplotlib.pyplot as plt
 
-st.set_page_config(page_title="Aplikasi Model Matematika Industri", layout="centered")
+st.set_page_config(page_title="Model Matematika Industri", layout="centered")
 
 st.title("📊 Aplikasi Model Matematika Industri")
 menu = st.sidebar.selectbox("Pilih Model", [
@@ -14,18 +14,15 @@ menu = st.sidebar.selectbox("Pilih Model", [
     "4. Regresi Linier – Prediksi Permintaan"
 ])
 
-# ---------------------------------------------
 # 1. Linear Programming
-# ---------------------------------------------
 if "Linear Programming" in menu:
     st.header("1. Linear Programming – Optimasi Produksi")
 
-    st.subheader("Masukkan parameter:")
     profit_A = st.number_input("Keuntungan per unit Produk A (Meja)", value=50000)
     profit_B = st.number_input("Keuntungan per unit Produk B (Kursi)", value=40000)
 
-    jam_A = st.number_input("Jam tukang untuk Produk A", value=2.0)
-    jam_B = st.number_input("Jam tukang untuk Produk B", value=3.0)
+    jam_A = st.number_input("Jam kerja tukang untuk Produk A", value=2.0)
+    jam_B = st.number_input("Jam kerja tukang untuk Produk B", value=3.0)
     papan_A = st.number_input("Papan kayu untuk Produk A", value=4.0)
     papan_B = st.number_input("Papan kayu untuk Produk B", value=1.0)
 
@@ -39,18 +36,30 @@ if "Linear Programming" in menu:
         bounds = [(0, None), (0, None)]
 
         res = linprog(c, A_ub=A, b_ub=b, bounds=bounds, method='highs')
+
         if res.success:
             x, y = res.x
-            st.success("Solusi ditemukan:")
-            st.write(f"Jumlah Produk A (Meja): {x:.2f}")
-            st.write(f"Jumlah Produk B (Kursi): {y:.2f}")
-            st.write(f"Maksimum Keuntungan: Rp {abs(res.fun):,.0f}")
-        else:
-            st.error("Solusi tidak ditemukan.")
+            st.success(f"Meja: {x:.2f}, Kursi: {y:.2f}, Keuntungan: Rp {abs(res.fun):,.0f}")
 
-# ---------------------------------------------
+            # Visualisasi grafik
+            x_vals = np.linspace(0, 60, 400)
+            y1 = (max_jam - jam_A * x_vals) / jam_B
+            y2 = (max_papan - papan_A * x_vals) / papan_B
+
+            plt.figure()
+            plt.plot(x_vals, y1, label="Kendala Jam Kerja")
+            plt.plot(x_vals, y2, label="Kendala Papan Kayu")
+            plt.fill_between(x_vals, 0, np.minimum(y1, y2), where=(np.minimum(y1, y2) > 0), color='lightgreen', alpha=0.5)
+            plt.plot(x, y, 'ro', label="Solusi Optimal")
+            plt.xlabel("Jumlah Meja (x)")
+            plt.ylabel("Jumlah Kursi (y)")
+            plt.title("Wilayah Feasible & Solusi")
+            plt.legend()
+            st.pyplot(plt)
+        else:
+            st.error("Tidak ada solusi yang memenuhi.")
+
 # 2. EOQ
-# ---------------------------------------------
 elif "EOQ" in menu:
     st.header("2. EOQ – Economic Order Quantity")
 
@@ -59,47 +68,75 @@ elif "EOQ" in menu:
     H = st.number_input("Biaya Penyimpanan per Unit per Tahun (Rp)", value=2000)
 
     if st.button("Hitung EOQ"):
-        eoq = sqrt((2 * D * S) / H)
-        st.success(f"Jumlah Pemesanan Ekonomis (EOQ): {eoq:.2f} unit")
+        EOQ = sqrt((2 * D * S) / H)
+        st.success(f"EOQ: {EOQ:.2f} unit")
 
-# ---------------------------------------------
+        Q = np.linspace(1, 2 * EOQ, 500)
+        TC = (D / Q) * S + (Q / 2) * H
+
+        plt.figure()
+        plt.plot(Q, TC, label='Total Cost')
+        plt.axvline(EOQ, color='r', linestyle='--', label='EOQ')
+        plt.title("Total Cost vs. Quantity")
+        plt.xlabel("Order Quantity (Q)")
+        plt.ylabel("Total Cost")
+        plt.legend()
+        st.pyplot(plt)
+
 # 3. Antrian M/M/1
-# ---------------------------------------------
 elif "Antrian" in menu:
-    st.header("3. Antrian M/M/1 – Sistem Layanan Pelanggan")
+    st.header("3. Antrian M/M/1 – Sistem Layanan")
 
-    λ = st.number_input("Tingkat Kedatangan (λ) pelanggan/jam", value=2.0)
-    μ = st.number_input("Tingkat Pelayanan (μ) pelanggan/jam", value=4.0)
+    λ = st.number_input("Tingkat Kedatangan λ (pelanggan/jam)", value=2.0)
+    μ = st.number_input("Tingkat Pelayanan μ (pelanggan/jam)", value=4.0)
 
     if st.button("Hitung Antrian"):
         if λ >= μ:
-            st.error("Sistem tidak stabil. λ harus lebih kecil dari μ.")
+            st.error("Sistem tidak stabil: λ harus < μ")
         else:
             ρ = λ / μ
             L = λ / (μ - λ)
             W = 1 / (μ - λ)
-            st.success(f"Utilisasi Teknisi: {ρ*100:.2f}%")
-            st.write(f"Rata-rata pelanggan dalam sistem (L): {L:.2f}")
-            st.write(f"Waktu rata-rata pelanggan dalam sistem (W): {W*60:.2f} menit")
+            st.success(f"Utilisasi (ρ): {ρ*100:.2f}%")
+            st.write(f"Rata-rata pelanggan (L): {L:.2f}")
+            st.write(f"Rata-rata waktu dalam sistem (W): {W*60:.2f} menit")
 
-# ---------------------------------------------
+            # Grafik: Utilisasi terhadap L dan W
+            lam_vals = np.linspace(0.01, μ - 0.01, 500)
+            L_vals = lam_vals / (μ - lam_vals)
+            W_vals = 1 / (μ - lam_vals)
+
+            fig, ax = plt.subplots(2, 1, figsize=(6, 8))
+            ax[0].plot(lam_vals, L_vals, label='L (Pelanggan dalam sistem)')
+            ax[0].axvline(λ, color='r', linestyle='--', label='λ Sekarang')
+            ax[0].legend()
+            ax[0].set_title("λ vs L")
+            ax[0].set_xlabel("λ")
+            ax[0].set_ylabel("L")
+
+            ax[1].plot(lam_vals, W_vals, label='W (Waktu dalam sistem)', color='green')
+            ax[1].axvline(λ, color='r', linestyle='--', label='λ Sekarang')
+            ax[1].legend()
+            ax[1].set_title("λ vs W")
+            ax[1].set_xlabel("λ")
+            ax[1].set_ylabel("W (jam)")
+
+            st.pyplot(fig)
+
 # 4. Regresi Linier
-# ---------------------------------------------
 elif "Regresi" in menu:
-    st.header("4. Regresi Linier – Prediksi Permintaan Bulanan")
+    st.header("4. Regresi Linier – Prediksi Permintaan")
 
-    st.write("Masukkan data bulan dan permintaan:")
-    jumlah_data = st.number_input("Jumlah Bulan", min_value=2, max_value=12, value=5)
-
+    n = st.number_input("Jumlah Bulan", min_value=2, max_value=12, value=5)
     bulan = []
     permintaan = []
 
-    for i in range(int(jumlah_data)):
+    for i in range(int(n)):
         col1, col2 = st.columns(2)
         with col1:
             x = st.number_input(f"Bulan ke-{i+1}", value=i+1, key=f"x_{i}")
         with col2:
-            y = st.number_input(f"Permintaan bulan ke-{i+1}", value=100 + i*20, key=f"y_{i}")
+            y = st.number_input(f"Permintaan ke-{i+1}", value=100 + i * 20, key=f"y_{i}")
         bulan.append(x)
         permintaan.append(y)
 
@@ -107,28 +144,23 @@ elif "Regresi" in menu:
     permintaan = np.array(permintaan)
 
     if st.button("Hitung Regresi dan Prediksi"):
-        n = len(bulan)
-        sum_x = bulan.sum()
-        sum_y = permintaan.sum()
-        sum_xy = (bulan * permintaan).sum()
-        sum_x2 = (bulan ** 2).sum()
+        a, b = np.polyfit(bulan, permintaan, 1)
 
-        b = (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x ** 2)
-        a = (sum_y - b * sum_x) / n
+        def predict(x): return a * x + b
+        next_month = int(max(bulan) + 1)
+        prediksi = predict(next_month)
 
-        def predict(x): return a + b * x
-        bulan_next = int(max(bulan) + 1)
-        prediksi = predict(bulan_next)
-
-        st.write(f"Persamaan regresi: Y = {a:.2f} + {b:.2f}X")
-        st.success(f"Prediksi permintaan bulan ke-{bulan_next}: {prediksi:.2f} unit")
+        st.success(f"Persamaan: Y = {a:.2f}X + {b:.2f}")
+        st.write(f"Prediksi Bulan ke-{next_month}: {prediksi:.2f} unit")
 
         # Grafik
         plt.figure()
-        plt.scatter(bulan, permintaan, color='blue', label='Data Aktual')
-        plt.plot(bulan, predict(bulan), color='red', label='Regresi Linier')
+        plt.scatter(bulan, permintaan, label="Data Aktual")
+        plt.plot(bulan, predict(bulan), color="red", label="Regresi Linier")
+        plt.axvline(next_month, color='gray', linestyle='--')
+        plt.scatter(next_month, prediksi, color='green', label=f"Prediksi Bulan {next_month}")
+        plt.title("Prediksi Permintaan Bulanan")
         plt.xlabel("Bulan")
         plt.ylabel("Permintaan")
-        plt.title("Prediksi Permintaan")
         plt.legend()
         st.pyplot(plt)
